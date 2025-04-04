@@ -1,6 +1,3 @@
-# batman-laundry-card
-Customized Picture Elements Laundry Card For Home Assistant
-
 # Batman Laundry Card for Home Assistant
 
 A fun, Batman-themed `picture-elements` card for Home Assistant to monitor and control your washer and dryer. Displays animated GIFs and PNGs based on appliance states, with text overlays for job status and remaining time.
