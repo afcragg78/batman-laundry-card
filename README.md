@@ -11,7 +11,7 @@ A fun, Batman-themed `picture-elements` card for Home Assistant to monitor and c
 ## Demo Video
 Here’s a short clip of the card in action:
 
-[![batman-laundry-card](https://img.youtube.com/vi/hIn9QnNpZ2Y)](https://www.youtube.com/watch?v=hIn9QnNpZ2Y)
+[![batman-laundry-card](https://img.youtube.com/vi/hIn9QnNpZ2Y.0.jpg)](https://www.youtube.com/watch?v=hIn9QnNpZ2Y)
 
 ## Files
 - `picture-elements.yaml`: The card configuration.
