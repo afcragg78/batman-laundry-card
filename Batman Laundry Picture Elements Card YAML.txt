@@ -1,0 +1,250 @@
+type: picture-elements
+image: >-
+  http://your_ip_address:8123/local/pictures/Batman_Laundry_Empty.png
+panel: true
+elements:
+  - type: state-label
+    entity: input_text.laundry_label
+    style:
+      left: 24%
+      top: 8%
+      color: black
+      font-size: 25px
+      font-weight: bold
+      z-index: 10
+      background: rgba(208, 208, 208, 0.4)
+      padding: 5px
+      border-radius: 5px
+    tap_action:
+      action: none
+  - type: image
+    entity: switch.washer
+    image: >-
+      http://your_ip_address:8123/local/pictures/Batman_Laundry_Empty.png
+    state_image:
+      "off": >-
+        http://your_ip_address:8123/local/pictures/Batman_Laundry_Empty.png
+    style:
+      left: 0%
+      top: 0%
+      transform: scale(1,1)
+    tap_action:
+      action: toggle
+  - type: conditional
+    conditions:
+      - entity: switch.washer
+        state: "on"
+    elements:
+      - type: image
+        entity: switch.washer
+        image: >-
+          http://your_ip_address:8123/local/pictures/Batman_Laundry_Clothes.png
+        state_image:
+          "on": >-
+            http://your_ip_address:8123/local/pictures/Batman_Laundry_Clothes.png
+        style:
+          left: 0%
+          top: 0%
+          transform: scale(1,1)
+        tap_action:
+          action: toggle
+  - type: conditional
+    conditions:
+      - entity: switch.washer
+        state: "on"
+      - condition: or
+        conditions:
+          - entity: sensor.washer_job_state
+            state: wash
+          - entity: sensor.washer_job_state
+            state: rinse
+          - entity: sensor.washer_job_state
+            state: spin
+    elements:
+      - type: image
+        entity: sensor.washer_job_state
+        image: >-
+          http://your_ip_address:8123/local/pictures/Batman_Laundry_Rinse.gif
+        state_image:
+          wash: >-
+            http://your_ip_address:8123/local/pictures/Batman_Laundry_Rinse.gif
+          rinse: >-
+            http://your_ip_address:8123/local/pictures/Batman_Laundry_Sin.gif
+          spin: >-
+            http://your_ip_address:8123/local/pictures/Batman_Laundry_Spin.gif  
+        style:
+          left: 0%
+          top: 0%
+          transform: scale(1,1)
+        tap_action:
+          action: more-info
+      - type: conditional
+        conditions:
+          - entity: sensor.washer_completion_time_minutes
+            state_not: "0"
+        elements:
+          - type: state-label
+            entity: sensor.washer_completion_time_minutes
+            style:
+              left: 63%
+              bottom: 1%
+              color: red
+              transform: scale(1.2,1.2)
+            tap_action:
+              action: more-info
+      - type: conditional
+        conditions:
+          - entity: sensor.washer_completion_time_minutes
+            state: "0"
+        elements:
+          - type: state-label
+            entity: sensor.washer_completion_time_minutes
+            style:
+              left: 63%
+              bottom: 1%
+              color: green
+              transform: scale(1.2,1.2)
+            tap_action:
+              action: more-info
+      - type: conditional
+        conditions:
+          - entity: switch.dryer
+            state: "on"
+        elements:
+          - type: state-label
+            entity: sensor.dryer_completion_time_minutes
+            style:
+              left: 63%
+              bottom: 77%
+              color: blue
+              transform: scale(1.2,1.2)
+            tap_action:
+              action: more-info
+      - type: state-label
+        entity: sensor.washer_job_state
+        style:
+          left: 67%
+          bottom: 9%
+          font-size: 13px
+          font-weight: bold
+          color: black
+          transform: scale(2,2)
+        tap_action:
+          action: none
+  - type: conditional
+    conditions:
+      - entity: switch.dryer
+        state: "on"
+    elements:
+      - type: state-label
+        entity: sensor.dryer_job_state
+        style:
+          left: 66%
+          top: 2%
+          font-size: 12px
+          font-weight: bold
+          color: black
+          transform: scale(2,2)
+        tap_action:
+          action: none
+  - type: conditional
+    conditions:
+      - entity: switch.dryer
+        state: "on"
+      - condition: and
+        conditions:
+          - entity: switch.washer
+            state_not: "on"
+          - entity: sensor.washer_job_state
+            state_not: wash
+          - entity: sensor.washer_job_state
+            state_not: rinse
+          - entity: sensor.washer_job_state
+            state_not: spin
+          - entity: sensor.washer_job_state
+            state_not: finish
+    elements:
+      - type: image
+        entity: switch.dryer
+        image: >-
+          http://your_ip_address:8123/local/pictures/Batman_Laundry_Spin.gif
+        state_image:
+          "on": >-
+            http://your_ip_address:8123/local/pictures/Batman_Laundry_Spin.gif
+        style:
+          left: 0%
+          top: 0%
+          transform: scale(1,1)
+        tap_action:
+          action: more-info
+      - type: conditional
+        conditions:
+          - entity: sensor.dryer_completion_time_minutes
+            state_not: "0"
+        elements:
+          - type: state-label
+            entity: sensor.dryer_completion_time_minutes
+            style:
+              left: 63%
+              bottom: 77%
+              color: blue
+              transform: scale(1.2,1.2)
+            tap_action:
+              action: more-info
+      - type: conditional
+        conditions:
+          - entity: sensor.dryer_completion_time_minutes
+            state: "0"
+        elements:
+          - type: state-label
+            entity: sensor.dryer_completion_time_minutes
+            style:
+              left: 63%
+              bottom: 77%
+              color: blue
+              transform: scale(1.2,1.2)
+            tap_action:
+              action: more-info
+      - type: state-label
+        entity: sensor.dryer_job_state
+        style:
+          left: 66%
+          bottom: 85%
+          font-size: 12px
+          font-weight: bold
+          color: black
+          transform: scale(2,2)
+        tap_action:
+          action: none
+  - type: conditional
+    conditions:
+      - entity: sensor.washer_job_state
+        state: finish
+    elements:
+      - type: image
+        entity: sensor.washer_job_state
+        image: >-
+          http://your_ip_address:8123/local/pictures/Batmn_Laundry_Done.gif
+        style:
+          left: 0%
+          top: 0%
+          transform: scale(1,1)
+        tap_action:
+          action: more-info
+  - type: conditional
+    conditions:
+      - entity: sensor.dryer_job_state
+        state: finished
+      - entity: sensor.washer_job_state
+        state_not: finish
+    elements:
+      - type: image
+        entity: sensor.dryer_job_state
+        image: >-
+          http://your_ip_address:8123/local/pictures/Batman_Laundry_Done.gif
+        style:
+          left: 0%
+          top: 0%
+          transform: scale(1,1)
+        tap_action:
+          action: more-info
