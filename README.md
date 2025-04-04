@@ -12,7 +12,7 @@ A fun, Batman-themed `picture-elements` card for Home Assistant to monitor and c
 Here’s a short clip of the card in action:
 
 <video controls width="600">
-  <source src="https://vimeo.com/1072618799/afcragg78/batman-laundry-card/main/images/demo.mp4" type="video/mp4">
+  <source src="https://youtu.be/hIn9QnNpZ2Y/afcragg78/batman-laundry-card/main/images/demo.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 
