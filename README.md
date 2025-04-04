@@ -9,9 +9,9 @@ A fun, Batman-themed `picture-elements` card for Home Assistant to monitor and c
 - Text overlays for job states (e.g., "wash," "finished") and completion times in minutes.
 
 ## Demo Video
-Here’s a short clip of the card in action:
+Here’s a short clip of the card in action. Click the thumbnail to watch on YouTube:
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/hIn9QnNpZ2Y" frameborder="0" allowfullscreen></iframe>
+[![Batman Laundry Card Demo](https://img.youtube.com/vi/hIn9QnNpZ2Y/0.jpg)](https://www.youtube.com/watch?v=hIn9QnNpZ2Y)
 
 ## Files
 - `picture-elements.yaml`: The card configuration.
