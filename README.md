@@ -8,10 +8,18 @@ A fun, Batman-themed `picture-elements` card for Home Assistant to monitor and c
 - Dryer: Shows `Batman_Laundry_Spin.gif` when running alone, and `Batmn_Laundry_Done.gif` when done.
 - Text overlays for job states (e.g., "wash," "finished") and completion times in minutes.
 
+## Demo Video
+Here’s a short clip of the card in action:
+
+<video controls width="600">
+  <source src="https://vimeo.com/1072618799/afcragg78/batman-laundry-card/main/images/demo.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
 ## Files
 - `picture-elements.yaml`: The card configuration.
 - `configuration.yaml`: Defines `input_text.laundry_label` and template sensors for completion times.
-- `images/`: Contains the Batman-themed images (PNG and GIF files).
+- `images/`: Contains the Batman-themed images (PNG and GIF files) and the demo video.
 
 ## Setup Instructions
 1. **Add to Home Assistant**:
