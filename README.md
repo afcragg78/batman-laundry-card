@@ -4,19 +4,18 @@ A fun, Batman-themed `picture-elements` card for Home Assistant to monitor and c
 
 ## Features
 - Shows `Batman_Laundry_Empty.png` when both appliances are off.
-- Washer: Displays `Batman_Laundry_Clothes.png` when on, with GIFs (`Rinse.gif`, `Sin.gif`, `Spin.gif`) for cycles, and `Batmn_Laundry_Done.gif` when finished.
+- Washer: Displays `Batman_Laundry_Clothes.png` when on, with GIFs (`Rinse.gif`, `Sin.git`, `Spin.gif`) for cycles, and `Batmn_Laundry_Done.gif` when finished.
 - Dryer: Shows `Batman_Laundry_Spin.gif` when running alone, and `Batmn_Laundry_Done.gif` when done.
 - Text overlays for job states (e.g., "wash," "finished") and completion times in minutes.
 
 ## Demo Video
-Here’s a short clip of the card in action:
-
-[![batman-laundry-card](https://img.youtube.com/vi/hIn9QnNpZ2Y.0.jpg)](https://www.youtube.com/watch?v=hIn9QnNpZ2Y)
+Here’s a short clip of the card in action on YouTube:  
+[Watch the Batman Laundry Card Demo](https://www.youtube.com/watch?v=hIn9QnNpZ2Y)
 
 ## Files
 - `picture-elements.yaml`: The card configuration.
 - `configuration.yaml`: Defines `input_text.laundry_label` and template sensors for completion times.
-- `images/`: Contains the Batman-themed images (PNG and GIF files) and the demo video.
+- `images/`: Contains the Batman-themed images (PNG and GIF files).
 
 ## Setup Instructions
 1. **Add to Home Assistant**:
