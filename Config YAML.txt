@@ -1,0 +1,38 @@
+input_text:
+  laundry_label:
+    name: Laundry Label
+    initial: LAUNDRY
+
+sensor:
+  - platform: template
+    sensors:
+      washer_completion_time_minutes:
+        name: "Washer Completion Time Minutes"
+        unique_id: washer_completion_time_minutes
+        state: >
+          {% set completion_time = as_timestamp(states('sensor.washer_completion_time')) %}
+          {% set current_time = as_timestamp(now()) %}
+          {% if completion_time and current_time %}
+            {% set minutes_remaining = ((completion_time - current_time) / 60) | round(0) %}
+            {{ minutes_remaining if minutes_remaining > 0 else 0 }}
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "minutes"
+        state_class: measurement
+        device_class: duration
+      dryer_completion_time_minutes:
+        name: "Dryer Completion Time Minutes"
+        unique_id: dryer_completion_time_minutes
+        state: >
+          {% set completion_time = as_timestamp(states('sensor.dryer_completion_time')) %}
+          {% set current_time = as_timestamp(now()) %}
+          {% if completion_time and current_time %}
+            {% set minutes_remaining = ((completion_time - current_time) / 60) | round(0) %}
+            {{ minutes_remaining if minutes_remaining > 0 else 0 }}
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "minutes"
+        state_class: measurement
+        device_class: duration
