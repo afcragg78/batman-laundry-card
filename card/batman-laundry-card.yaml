@@ -1,0 +1,6340 @@
+# Batman Laundry Card v2 (Home Assistant dashboard card)
+#
+# Requirements:
+#   - Home Assistant picture-elements card (built in)
+#   - custom:button-card (HACS, "button-card" by RomRider)   -> progress rings and labels
+#   - Browser Mod (HACS)                                      -> tap-to-open pop-ups
+#
+# Images: copy everything from the repo's images/ folder to
+#   /config/www/batman-laundry-card/
+# so they are served as /local/batman-laundry-card/<file>.
+# Always use /local/... paths, never an absolute address with your IP in front (that breaks outside your LAN).
+#
+# Entities: the card is written for Samsung (SmartThings "LocalThings"-style) entities.
+# Two prefixes appear throughout. Find and replace them with your own machine prefixes:
+#
+#   samsung_washer_da_wm_tp1_21_common_   ->  <your washer entity prefix>_
+#   samsung_dryer_da_wm_tp1_21_common_    ->  <your dryer entity prefix>_
+#
+# Also needed: input_text.laundry_label (see configuration/input_text.yaml).
+#
+# Pop-up rows: a few pop-up entities start with "hallway_" (for example
+# select.hallway_samsung_washer_da_wm_tp1_21_common_soil_level). Those IDs are specific to the
+# author's install. Fix or delete those rows if they do not exist on your system; the card
+# itself works without them. See the README for the full entity-role table.
+#
+# Paste everything below into: Edit dashboard > Add card > Manual.
+type: picture-elements
+image: /local/batman-laundry-card/Batman_Laundry_Empty.png
+elements:
+- type: conditional
+  conditions:
+  - condition: state
+    entity: binary_sensor.samsung_washer_da_wm_tp1_21_common_running
+    state: 'on'
+  elements:
+  - type: image
+    entity: binary_sensor.samsung_washer_da_wm_tp1_21_common_running
+    image: /local/batman-laundry-card/Batman_Laundry_Clothes.png
+    style:
+      left: 0%
+      top: 0%
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+- type: conditional
+  conditions:
+  - condition: state
+    entity: binary_sensor.samsung_washer_da_wm_tp1_21_common_running
+    state: 'on'
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    state:
+    - prewash
+    - wash
+    - rinse
+    - spin
+    - predrain
+    - weightsensing
+  elements:
+  - type: image
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    image: /local/batman-laundry-card/Batman_Laundry_Rinse.gif
+    state_image:
+      wash: /local/batman-laundry-card/Batman_Laundry_Rinse.gif
+      rinse: /local/batman-laundry-card/Batman_Laundry_Sin.gif
+      spin: /local/batman-laundry-card/Batman_Laundry_Spin.gif
+    style:
+      left: 0%
+      top: 0%
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+- type: conditional
+  conditions:
+  - condition: state
+    entity: binary_sensor.samsung_dryer_da_wm_tp1_21_common_running
+    state: 'on'
+  - condition: state
+    entity: binary_sensor.samsung_washer_da_wm_tp1_21_common_running
+    state: 'off'
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    state_not: finish
+  elements:
+  - type: image
+    entity: binary_sensor.samsung_dryer_da_wm_tp1_21_common_running
+    image: /local/batman-laundry-card/Batman_Laundry_Spin.gif
+    style:
+      left: 0%
+      top: 0%
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    state: finish
+  elements:
+  - type: image
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    image: /local/batman-laundry-card/Batmn_Laundry_Done.gif
+    style:
+      left: 0%
+      top: 0%
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    state: finish
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    state_not: finish
+  elements:
+  - type: image
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    image: /local/batman-laundry-card/Batmn_Laundry_Done.gif
+    style:
+      left: 0%
+      top: 0%
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+- type: state-label
+  entity: input_text.laundry_label
+  style:
+    left: 24%
+    top: 8%
+    color: black
+    font-size: 25px
+    font-weight: bold
+    z-index: 10
+    pointer-events: none
+  tap_action:
+    action: none
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  elements:
+  - type: image
+    entity: binary_sensor.samsung_washer_da_wm_tp1_21_common_running
+    image: /local/batman-laundry-card/transparent.png
+    style:
+      left: 0%
+      top: 0%
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: Washer controls
+          dismissable: true
+          size: normal
+          content:
+            type: vertical-stack
+            cards:
+            - type: markdown
+              content: |-
+                ### Washer
+                {% set e='sensor.samsung_washer_da_wm_tp1_21_common_' %}{{ states(e~'progress')|title }} · {{ states(e~'machine_state')|title }}{% if is_state('binary_sensor.samsung_washer_da_wm_tp1_21_common_running','on') %} · {{ states(e~'completion_time') }} min left{% endif %}
+            - type: horizontal-stack
+              cards:
+              - type: button
+                name: Start
+                icon: mdi:play-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_washer_da_wm_tp1_21_common_start
+                  confirmation:
+                    text: Start the washer?
+                hold_action:
+                  action: none
+              - type: button
+                name: Pause
+                icon: mdi:pause-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_washer_da_wm_tp1_21_common_pause
+                hold_action:
+                  action: none
+              - type: button
+                name: Stop
+                icon: mdi:stop-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_washer_da_wm_tp1_21_common_stop
+                  confirmation:
+                    text: Stop the washer? This ends the current cycle.
+                hold_action:
+                  action: none
+                styles:
+                  icon:
+                  - color: '#b5372b'
+            - type: markdown
+              content: '{% set e=''sensor.samsung_washer_da_wm_tp1_21_common_'' %}**{{ states(e~''energy'')|float(0)|round(1) }}** kWh energy &nbsp;·&nbsp; **{{ states(e~''water_consumption'')|float(0)|round(0)|int }}** gal water &nbsp;·&nbsp; **{{ states(e~''drum_clean_due_in'') }}** loads until drum clean'
+            - type: entities
+              title: Settings
+              show_header_toggle: false
+              entities:
+              - entity: select.samsung_washer_da_wm_tp1_21_common_cycle
+                name: Cycle
+              - entity: select.samsung_washer_da_wm_tp1_21_common_wash_temperature
+                name: Wash temperature
+              - entity: select.samsung_washer_da_wm_tp1_21_common_spin_speed
+                name: Spin speed
+              - entity: select.hallway_samsung_washer_da_wm_tp1_21_common_soil_level
+                name: Soil level
+              - entity: select.samsung_washer_da_wm_tp1_21_common_rinse_cycles
+                name: Rinse cycles
+              - entity: number.samsung_washer_da_wm_tp1_21_common_delay_start
+                name: Delay start (hours)
+              - entity: select.hallway_samsung_washer_da_wm_tp1_21_common_laundry_out_reminder
+                name: Laundry-out reminder (min)
+              - entity: time.hallway_samsung_washer_da_wm_tp1_21_common_finish_by
+                name: Finish by
+            - type: entities
+              title: Status & maintenance
+              show_header_toggle: false
+              entities:
+              - entity: binary_sensor.samsung_washer_da_wm_tp1_21_common_detergent_low
+                name: Detergent low
+              - entity: binary_sensor.hallway_samsung_washer_da_wm_tp1_21_common_child_lock
+                name: Child lock
+              - entity: sensor.samsung_washer_da_wm_tp1_21_common_alarm_code
+                name: Alarm
+              - entity: sensor.hallway_samsung_washer_da_wm_tp1_21_common_drum_last_cleaned
+                name: Drum last cleaned
+              - entity: binary_sensor.samsung_washer_da_wm_tp1_21_common_firmware_update_available
+                name: Firmware update available
+              - entity: button.samsung_washer_da_wm_tp1_21_common_start_diagnosis
+                name: Drum clean diagnosis
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_washer_da_wm_tp1_21_common_start_diagnosis
+                  confirmation:
+                    text: Run the washer diagnosis?
+    hold_action:
+      action: none
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state: idle
+  elements:
+  - type: image
+    entity: binary_sensor.samsung_washer_da_wm_tp1_21_common_running
+    image: /local/batman-laundry-card/transparent.png
+    style:
+      left: 0%
+      top: 0%
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: Dryer controls
+          dismissable: true
+          size: normal
+          content:
+            type: vertical-stack
+            cards:
+            - type: markdown
+              content: |-
+                ### Dryer
+                {% set e='sensor.samsung_dryer_da_wm_tp1_21_common_' %}{{ states(e~'progress')|title }} · {{ states(e~'machine_state')|title }}{% if is_state('binary_sensor.samsung_dryer_da_wm_tp1_21_common_running','on') %} · {{ states(e~'completion_time') }} min left{% endif %}
+            - type: horizontal-stack
+              cards:
+              - type: button
+                name: Start
+                icon: mdi:play-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_dryer_da_wm_tp1_21_common_start
+                  confirmation:
+                    text: Start the dryer?
+                hold_action:
+                  action: none
+              - type: button
+                name: Pause
+                icon: mdi:pause-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_dryer_da_wm_tp1_21_common_pause
+                hold_action:
+                  action: none
+              - type: button
+                name: Stop
+                icon: mdi:stop-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_dryer_da_wm_tp1_21_common_stop
+                  confirmation:
+                    text: Stop the dryer? This ends the current cycle.
+                hold_action:
+                  action: none
+                styles:
+                  icon:
+                  - color: '#b5372b'
+            - type: markdown
+              content: '{% set e=''sensor.samsung_dryer_da_wm_tp1_21_common_'' %}**{{ states(e~''energy'')|float(0)|round(1) }}** kWh energy &nbsp;·&nbsp; **{{ states(''select.hallway_samsung_dryer_da_wm_tp1_21_common_dry_level'')|title }}** dry level &nbsp;·&nbsp; damp alert **{{ states(''switch.hallway_samsung_dryer_da_wm_tp1_21_common_damp_alert'')|title }}**'
+            - type: entities
+              title: Settings
+              show_header_toggle: false
+              entities:
+              - entity: select.samsung_dryer_da_wm_tp1_21_common_cycle
+                name: Cycle
+              - entity: select.hallway_samsung_dryer_da_wm_tp1_21_common_dry_level
+                name: Dry level
+              - entity: switch.samsung_dryer_da_wm_tp1_21_common_wrinkle_prevent
+                name: Wrinkle prevent
+              - entity: switch.hallway_samsung_dryer_da_wm_tp1_21_common_damp_alert
+                name: Damp alert
+              - entity: number.samsung_dryer_da_wm_tp1_21_common_delay_start
+                name: Delay start (hours)
+              - entity: time.hallway_samsung_dryer_da_wm_tp1_21_common_finish_by
+                name: Finish by
+            - type: entities
+              title: Status & maintenance
+              show_header_toggle: false
+              entities:
+              - entity: binary_sensor.hallway_samsung_dryer_da_wm_tp1_21_common_child_lock
+                name: Child lock
+              - entity: sensor.samsung_dryer_da_wm_tp1_21_common_alarm_code
+                name: Alarm
+              - entity: binary_sensor.hallway_samsung_dryer_da_wm_tp1_21_common_wrinkle_prevent_active
+                name: Wrinkle prevent active
+              - entity: binary_sensor.samsung_dryer_da_wm_tp1_21_common_firmware_update_available
+                name: Firmware update available
+    hold_action:
+      action: none
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  elements:
+  - type: image
+    entity: binary_sensor.samsung_washer_da_wm_tp1_21_common_running
+    image: /local/batman-laundry-card/transparent.png
+    style:
+      left: 0%
+      top: 0%
+      clip-path: polygon(59% 0,100% 0,100% 100%,51% 100%,51% 78%,59% 78%)
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: Washer controls
+          dismissable: true
+          size: normal
+          content:
+            type: vertical-stack
+            cards:
+            - type: markdown
+              content: |-
+                ### Washer
+                {% set e='sensor.samsung_washer_da_wm_tp1_21_common_' %}{{ states(e~'progress')|title }} · {{ states(e~'machine_state')|title }}{% if is_state('binary_sensor.samsung_washer_da_wm_tp1_21_common_running','on') %} · {{ states(e~'completion_time') }} min left{% endif %}
+            - type: horizontal-stack
+              cards:
+              - type: button
+                name: Start
+                icon: mdi:play-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_washer_da_wm_tp1_21_common_start
+                  confirmation:
+                    text: Start the washer?
+                hold_action:
+                  action: none
+              - type: button
+                name: Pause
+                icon: mdi:pause-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_washer_da_wm_tp1_21_common_pause
+                hold_action:
+                  action: none
+              - type: button
+                name: Stop
+                icon: mdi:stop-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_washer_da_wm_tp1_21_common_stop
+                  confirmation:
+                    text: Stop the washer? This ends the current cycle.
+                hold_action:
+                  action: none
+                styles:
+                  icon:
+                  - color: '#b5372b'
+            - type: markdown
+              content: '{% set e=''sensor.samsung_washer_da_wm_tp1_21_common_'' %}**{{ states(e~''energy'')|float(0)|round(1) }}** kWh energy &nbsp;·&nbsp; **{{ states(e~''water_consumption'')|float(0)|round(0)|int }}** gal water &nbsp;·&nbsp; **{{ states(e~''drum_clean_due_in'') }}** loads until drum clean'
+            - type: entities
+              title: Settings
+              show_header_toggle: false
+              entities:
+              - entity: select.samsung_washer_da_wm_tp1_21_common_cycle
+                name: Cycle
+              - entity: select.samsung_washer_da_wm_tp1_21_common_wash_temperature
+                name: Wash temperature
+              - entity: select.samsung_washer_da_wm_tp1_21_common_spin_speed
+                name: Spin speed
+              - entity: select.hallway_samsung_washer_da_wm_tp1_21_common_soil_level
+                name: Soil level
+              - entity: select.samsung_washer_da_wm_tp1_21_common_rinse_cycles
+                name: Rinse cycles
+              - entity: number.samsung_washer_da_wm_tp1_21_common_delay_start
+                name: Delay start (hours)
+              - entity: select.hallway_samsung_washer_da_wm_tp1_21_common_laundry_out_reminder
+                name: Laundry-out reminder (min)
+              - entity: time.hallway_samsung_washer_da_wm_tp1_21_common_finish_by
+                name: Finish by
+            - type: entities
+              title: Status & maintenance
+              show_header_toggle: false
+              entities:
+              - entity: binary_sensor.samsung_washer_da_wm_tp1_21_common_detergent_low
+                name: Detergent low
+              - entity: binary_sensor.hallway_samsung_washer_da_wm_tp1_21_common_child_lock
+                name: Child lock
+              - entity: sensor.samsung_washer_da_wm_tp1_21_common_alarm_code
+                name: Alarm
+              - entity: sensor.hallway_samsung_washer_da_wm_tp1_21_common_drum_last_cleaned
+                name: Drum last cleaned
+              - entity: binary_sensor.samsung_washer_da_wm_tp1_21_common_firmware_update_available
+                name: Firmware update available
+              - entity: button.samsung_washer_da_wm_tp1_21_common_start_diagnosis
+                name: Drum clean diagnosis
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_washer_da_wm_tp1_21_common_start_diagnosis
+                  confirmation:
+                    text: Run the washer diagnosis?
+    hold_action:
+      action: none
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  elements:
+  - type: image
+    entity: binary_sensor.samsung_washer_da_wm_tp1_21_common_running
+    image: /local/batman-laundry-card/transparent.png
+    style:
+      left: 0%
+      top: 0%
+      clip-path: polygon(0 0,59% 0,59% 78%,51% 78%,51% 100%,0 100%)
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: Dryer controls
+          dismissable: true
+          size: normal
+          content:
+            type: vertical-stack
+            cards:
+            - type: markdown
+              content: |-
+                ### Dryer
+                {% set e='sensor.samsung_dryer_da_wm_tp1_21_common_' %}{{ states(e~'progress')|title }} · {{ states(e~'machine_state')|title }}{% if is_state('binary_sensor.samsung_dryer_da_wm_tp1_21_common_running','on') %} · {{ states(e~'completion_time') }} min left{% endif %}
+            - type: horizontal-stack
+              cards:
+              - type: button
+                name: Start
+                icon: mdi:play-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_dryer_da_wm_tp1_21_common_start
+                  confirmation:
+                    text: Start the dryer?
+                hold_action:
+                  action: none
+              - type: button
+                name: Pause
+                icon: mdi:pause-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_dryer_da_wm_tp1_21_common_pause
+                hold_action:
+                  action: none
+              - type: button
+                name: Stop
+                icon: mdi:stop-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_dryer_da_wm_tp1_21_common_stop
+                  confirmation:
+                    text: Stop the dryer? This ends the current cycle.
+                hold_action:
+                  action: none
+                styles:
+                  icon:
+                  - color: '#b5372b'
+            - type: markdown
+              content: '{% set e=''sensor.samsung_dryer_da_wm_tp1_21_common_'' %}**{{ states(e~''energy'')|float(0)|round(1) }}** kWh energy &nbsp;·&nbsp; **{{ states(''select.hallway_samsung_dryer_da_wm_tp1_21_common_dry_level'')|title }}** dry level &nbsp;·&nbsp; damp alert **{{ states(''switch.hallway_samsung_dryer_da_wm_tp1_21_common_damp_alert'')|title }}**'
+            - type: entities
+              title: Settings
+              show_header_toggle: false
+              entities:
+              - entity: select.samsung_dryer_da_wm_tp1_21_common_cycle
+                name: Cycle
+              - entity: select.hallway_samsung_dryer_da_wm_tp1_21_common_dry_level
+                name: Dry level
+              - entity: switch.samsung_dryer_da_wm_tp1_21_common_wrinkle_prevent
+                name: Wrinkle prevent
+              - entity: switch.hallway_samsung_dryer_da_wm_tp1_21_common_damp_alert
+                name: Damp alert
+              - entity: number.samsung_dryer_da_wm_tp1_21_common_delay_start
+                name: Delay start (hours)
+              - entity: time.hallway_samsung_dryer_da_wm_tp1_21_common_finish_by
+                name: Finish by
+            - type: entities
+              title: Status & maintenance
+              show_header_toggle: false
+              entities:
+              - entity: binary_sensor.hallway_samsung_dryer_da_wm_tp1_21_common_child_lock
+                name: Child lock
+              - entity: sensor.samsung_dryer_da_wm_tp1_21_common_alarm_code
+                name: Alarm
+              - entity: binary_sensor.hallway_samsung_dryer_da_wm_tp1_21_common_wrinkle_prevent_active
+                name: Wrinkle prevent active
+              - entity: binary_sensor.samsung_dryer_da_wm_tp1_21_common_firmware_update_available
+                name: Firmware update available
+    hold_action:
+      action: none
+- type: conditional
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+      state:
+      - active
+      - pause
+    - condition: state
+      entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+      state: idle
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_alarm_code
+    state: none
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: active
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress_percent
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: '[[[ const p=Math.max(0,Math.min(100,Number(entity.state)||0)); const ps=(states[''sensor.samsung_dryer_da_wm_tp1_21_common_machine_state'']||{}).state===''pause''; const c=ps?''#b07014'':''#1f6fb2''; return `conic-gradient(${c} ${p*3.6}deg, #bebdc4 0deg)`; ]]]'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress_percent
+    name: '[[[ return Math.round(Number(entity.state)||0) ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 19px
+      - font-weight: '900'
+      - letter-spacing: 0px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: center
+      - text-align: center
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: DRYER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#1f6fb2'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 82.64%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: '[[[ return entity.state ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 87.15%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_completion_time
+    name: '[[[ return entity.state + '' min left'' ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 15px
+      - font-weight: '900'
+      - letter-spacing: 0.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: none
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 92.71%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+      state:
+      - active
+      - pause
+    - condition: state
+      entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+      state: idle
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_alarm_code
+    state: none
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: pause
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress_percent
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: '[[[ const p=Math.max(0,Math.min(100,Number(entity.state)||0)); const ps=(states[''sensor.samsung_dryer_da_wm_tp1_21_common_machine_state'']||{}).state===''pause''; const c=ps?''#b07014'':''#1f6fb2''; return `conic-gradient(${c} ${p*3.6}deg, #bebdc4 0deg)`; ]]]'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress_percent
+    name: '[[[ return Math.round(Number(entity.state)||0) ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 19px
+      - font-weight: '900'
+      - letter-spacing: 0px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: center
+      - text-align: center
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: DRYER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#1f6fb2'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 82.64%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: PAUSED
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#b07014'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 87.15%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_completion_time
+    name: '[[[ return entity.state + '' min left'' ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 15px
+      - font-weight: '900'
+      - letter-spacing: 0.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: none
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 92.71%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+      state:
+      - active
+      - pause
+    - condition: state
+      entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+      state: idle
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_alarm_code
+    state: none
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    state: finish
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: 'conic-gradient(#2e7d50 360deg, #2e7d50 0deg)'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    icon: mdi:check
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 30px
+      - height: 30px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 30px
+      - color: '#2e7d50'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      z-index: 12
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: DRYER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#1f6fb2'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 82.64%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: FINISHED
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#2e7d50'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 87.15%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: Ready to unload
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 0.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: none
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 92.71%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+      state:
+      - active
+      - pause
+    - condition: state
+      entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+      state: idle
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_alarm_code
+    state_not: none
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: 'conic-gradient(#b5372b 360deg, #b5372b 0deg)'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: '!'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 24px
+      - font-weight: '900'
+      - letter-spacing: 0px
+      - color: '#b5372b'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: center
+      - text-align: center
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: DRYER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#1f6fb2'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 82.64%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: ALARM
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#b5372b'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 87.15%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: Check the machine
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 0.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: none
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 92.71%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+      state:
+      - active
+      - pause
+    - condition: state
+      entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+      state: idle
+  - condition: or
+    conditions:
+    - condition: state
+      entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+      state:
+      - active
+      - pause
+    - condition: state
+      entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+      state: finish
+    - condition: state
+      entity: sensor.samsung_washer_da_wm_tp1_21_common_alarm_code
+      state_not: none
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_alarm_code
+    state: none
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    state_not: finish
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: 'conic-gradient(#bebdc4 360deg, #bebdc4 0deg)'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: DRYER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#6e6e7a'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 84.72%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: READY
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#6e6e7a'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 89.58%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+      state:
+      - active
+      - pause
+    - condition: state
+      entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+      state: idle
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_alarm_code
+    state: none
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state: active
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress_percent
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: '[[[ const p=Math.max(0,Math.min(100,Number(entity.state)||0)); const ps=(states[''sensor.samsung_washer_da_wm_tp1_21_common_machine_state'']||{}).state===''pause''; const c=ps?''#b07014'':''#c0392b''; return `conic-gradient(${c} ${p*3.6}deg, #bebdc4 0deg)`; ]]]'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress_percent
+    name: '[[[ return Math.round(Number(entity.state)||0) ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 19px
+      - font-weight: '900'
+      - letter-spacing: 0px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: center
+      - text-align: center
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: WASHER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#c0392b'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 82.64%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: '[[[ return entity.state ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 87.15%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_completion_time
+    name: '[[[ return entity.state + '' min left'' ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 15px
+      - font-weight: '900'
+      - letter-spacing: 0.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: none
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 92.71%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+      state:
+      - active
+      - pause
+    - condition: state
+      entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+      state: idle
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_alarm_code
+    state: none
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state: pause
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress_percent
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: '[[[ const p=Math.max(0,Math.min(100,Number(entity.state)||0)); const ps=(states[''sensor.samsung_washer_da_wm_tp1_21_common_machine_state'']||{}).state===''pause''; const c=ps?''#b07014'':''#c0392b''; return `conic-gradient(${c} ${p*3.6}deg, #bebdc4 0deg)`; ]]]'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress_percent
+    name: '[[[ return Math.round(Number(entity.state)||0) ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 19px
+      - font-weight: '900'
+      - letter-spacing: 0px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: center
+      - text-align: center
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: WASHER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#c0392b'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 82.64%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: PAUSED
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#b07014'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 87.15%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_completion_time
+    name: '[[[ return entity.state + '' min left'' ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 15px
+      - font-weight: '900'
+      - letter-spacing: 0.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: none
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 92.71%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+      state:
+      - active
+      - pause
+    - condition: state
+      entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+      state: idle
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_alarm_code
+    state: none
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    state: finish
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: 'conic-gradient(#2e7d50 360deg, #2e7d50 0deg)'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    icon: mdi:check
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 30px
+      - height: 30px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 30px
+      - color: '#2e7d50'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      z-index: 12
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: WASHER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#c0392b'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 82.64%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: FINISHED
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#2e7d50'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 87.15%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: Ready to unload
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 0.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: none
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 92.71%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+      state:
+      - active
+      - pause
+    - condition: state
+      entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+      state: idle
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_alarm_code
+    state_not: none
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: 'conic-gradient(#b5372b 360deg, #b5372b 0deg)'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: '!'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 24px
+      - font-weight: '900'
+      - letter-spacing: 0px
+      - color: '#b5372b'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: center
+      - text-align: center
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: WASHER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#c0392b'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 82.64%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: ALARM
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#b5372b'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 87.15%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: Check the machine
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 0.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: none
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 92.71%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+      state:
+      - active
+      - pause
+    - condition: state
+      entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+      state: idle
+  - condition: or
+    conditions:
+    - condition: state
+      entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+      state:
+      - active
+      - pause
+    - condition: state
+      entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+      state: finish
+    - condition: state
+      entity: sensor.samsung_dryer_da_wm_tp1_21_common_alarm_code
+      state_not: none
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_alarm_code
+    state: none
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    state_not: finish
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: 'conic-gradient(#bebdc4 360deg, #bebdc4 0deg)'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: WASHER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#6e6e7a'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 84.72%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: READY
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#6e6e7a'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 89.58%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_alarm_code
+    state: none
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state: active
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress_percent
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: '[[[ const p=Math.max(0,Math.min(100,Number(entity.state)||0)); const ps=(states[''sensor.samsung_washer_da_wm_tp1_21_common_machine_state'']||{}).state===''pause''; const c=ps?''#b07014'':''#c0392b''; return `conic-gradient(${c} ${p*3.6}deg, #bebdc4 0deg)`; ]]]'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress_percent
+    name: '[[[ return Math.round(Number(entity.state)||0) ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 19px
+      - font-weight: '900'
+      - letter-spacing: 0px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: center
+      - text-align: center
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: WASHER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#c0392b'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 82.64%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: '[[[ return entity.state ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 87.15%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_completion_time
+    name: '[[[ return entity.state + '' min left'' ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 15px
+      - font-weight: '900'
+      - letter-spacing: 0.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: none
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 92.71%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_alarm_code
+    state: none
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state: pause
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress_percent
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: '[[[ const p=Math.max(0,Math.min(100,Number(entity.state)||0)); const ps=(states[''sensor.samsung_washer_da_wm_tp1_21_common_machine_state'']||{}).state===''pause''; const c=ps?''#b07014'':''#c0392b''; return `conic-gradient(${c} ${p*3.6}deg, #bebdc4 0deg)`; ]]]'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress_percent
+    name: '[[[ return Math.round(Number(entity.state)||0) ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 19px
+      - font-weight: '900'
+      - letter-spacing: 0px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: center
+      - text-align: center
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: WASHER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#c0392b'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 82.64%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: PAUSED
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#b07014'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 87.15%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_completion_time
+    name: '[[[ return entity.state + '' min left'' ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 15px
+      - font-weight: '900'
+      - letter-spacing: 0.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: none
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 92.71%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_alarm_code
+    state: none
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    state: finish
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: 'conic-gradient(#2e7d50 360deg, #2e7d50 0deg)'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    icon: mdi:check
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 30px
+      - height: 30px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 30px
+      - color: '#2e7d50'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      z-index: 12
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: WASHER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#c0392b'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 82.64%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: FINISHED
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#2e7d50'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 87.15%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: Ready to unload
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 0.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: none
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 92.71%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_alarm_code
+    state_not: none
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: 'conic-gradient(#b5372b 360deg, #b5372b 0deg)'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: '!'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 24px
+      - font-weight: '900'
+      - letter-spacing: 0px
+      - color: '#b5372b'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: center
+      - text-align: center
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: WASHER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#c0392b'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 82.64%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: ALARM
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#b5372b'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 87.15%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: Check the machine
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 0.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: none
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 92.71%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: or
+    conditions:
+    - condition: state
+      entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+      state:
+      - active
+      - pause
+    - condition: state
+      entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+      state: finish
+    - condition: state
+      entity: sensor.samsung_dryer_da_wm_tp1_21_common_alarm_code
+      state_not: none
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_alarm_code
+    state: none
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    state_not: finish
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: 'conic-gradient(#bebdc4 360deg, #bebdc4 0deg)'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 15.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: WASHER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#6e6e7a'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 84.72%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+    name: READY
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#6e6e7a'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 24.00%
+      top: 89.58%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_alarm_code
+    state: none
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: active
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress_percent
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: '[[[ const p=Math.max(0,Math.min(100,Number(entity.state)||0)); const ps=(states[''sensor.samsung_dryer_da_wm_tp1_21_common_machine_state'']||{}).state===''pause''; const c=ps?''#b07014'':''#1f6fb2''; return `conic-gradient(${c} ${p*3.6}deg, #bebdc4 0deg)`; ]]]'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress_percent
+    name: '[[[ return Math.round(Number(entity.state)||0) ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 19px
+      - font-weight: '900'
+      - letter-spacing: 0px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: center
+      - text-align: center
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: DRYER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#1f6fb2'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 82.64%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: '[[[ return entity.state ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 87.15%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_completion_time
+    name: '[[[ return entity.state + '' min left'' ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 15px
+      - font-weight: '900'
+      - letter-spacing: 0.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: none
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 92.71%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_alarm_code
+    state: none
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: pause
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress_percent
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: '[[[ const p=Math.max(0,Math.min(100,Number(entity.state)||0)); const ps=(states[''sensor.samsung_dryer_da_wm_tp1_21_common_machine_state'']||{}).state===''pause''; const c=ps?''#b07014'':''#1f6fb2''; return `conic-gradient(${c} ${p*3.6}deg, #bebdc4 0deg)`; ]]]'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress_percent
+    name: '[[[ return Math.round(Number(entity.state)||0) ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 19px
+      - font-weight: '900'
+      - letter-spacing: 0px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: center
+      - text-align: center
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: DRYER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#1f6fb2'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 82.64%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: PAUSED
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#b07014'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 87.15%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_completion_time
+    name: '[[[ return entity.state + '' min left'' ]]]'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 15px
+      - font-weight: '900'
+      - letter-spacing: 0.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: none
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 92.71%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_alarm_code
+    state: none
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    state: finish
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: 'conic-gradient(#2e7d50 360deg, #2e7d50 0deg)'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    icon: mdi:check
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 30px
+      - height: 30px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 30px
+      - color: '#2e7d50'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      z-index: 12
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: DRYER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#1f6fb2'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 82.64%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: FINISHED
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#2e7d50'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 87.15%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: Ready to unload
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 0.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: none
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 92.71%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_alarm_code
+    state_not: none
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: 'conic-gradient(#b5372b 360deg, #b5372b 0deg)'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: '!'
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 24px
+      - font-weight: '900'
+      - letter-spacing: 0px
+      - color: '#b5372b'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: center
+      - text-align: center
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: DRYER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#1f6fb2'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 82.64%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: ALARM
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#b5372b'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 87.15%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: Check the machine
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 0.2px
+      - color: '#33333d'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: none
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 92.71%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: or
+    conditions:
+    - condition: state
+      entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+      state:
+      - active
+      - pause
+    - condition: state
+      entity: sensor.samsung_washer_da_wm_tp1_21_common_progress
+      state: finish
+    - condition: state
+      entity: sensor.samsung_washer_da_wm_tp1_21_common_alarm_code
+      state_not: none
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_alarm_code
+    state: none
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    state_not: finish
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    name: ''
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: 48px
+      - background: 'conic-gradient(#bebdc4 360deg, #bebdc4 0deg)'
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: 50%
+      - min-height: '0'
+      - height: 48px
+      - -webkit-mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      - mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px))'
+      name: []
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 59.75%
+      top: 86.81%
+      transform: translate(-50%,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: DRYER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 11.5px
+      - font-weight: '900'
+      - letter-spacing: 1.3px
+      - color: '#6e6e7a'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 84.72%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_progress
+    name: READY
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 13.5px
+      - font-weight: '900'
+      - letter-spacing: 1.2px
+      - color: '#6e6e7a'
+      - white-space: nowrap
+      - line-height: '1'
+      - text-transform: uppercase
+      - justify-self: start
+      - text-align: left
+      - text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 68.00%
+      top: 89.58%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: active
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    name: DRYER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 8px
+      - font-weight: '900'
+      - letter-spacing: 0.8px
+      - color: '#1f6fb2'
+      - white-space: nowrap
+      - justify-self: start
+      - line-height: '1'
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 61.25%
+      top: 4.86%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    icon: mdi:play-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#33333d'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 73.9%
+      top: 4.86%
+      transform: translate(-50%,-50%)
+      z-index: 12
+      opacity: 0.22
+  - type: custom:button-card
+    icon: mdi:pause-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: perform-action
+      perform_action: button.press
+      target:
+        entity_id: button.samsung_dryer_da_wm_tp1_21_common_pause
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#33333d'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 79.2%
+      top: 4.86%
+      transform: translate(-50%,-50%)
+      z-index: 12
+  - type: custom:button-card
+    icon: mdi:stop-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: perform-action
+      perform_action: button.press
+      target:
+        entity_id: button.samsung_dryer_da_wm_tp1_21_common_stop
+      confirmation:
+        text: Stop the dryer? This ends the current cycle.
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#b5372b'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 84.5%
+      top: 4.86%
+      transform: translate(-50%,-50%)
+      z-index: 12
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state: active
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    name: WASHER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 8px
+      - font-weight: '900'
+      - letter-spacing: 0.8px
+      - color: '#c0392b'
+      - white-space: nowrap
+      - justify-self: start
+      - line-height: '1'
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 61.25%
+      top: 13.89%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    icon: mdi:play-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#33333d'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 73.9%
+      top: 13.89%
+      transform: translate(-50%,-50%)
+      z-index: 12
+      opacity: 0.22
+  - type: custom:button-card
+    icon: mdi:pause-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: perform-action
+      perform_action: button.press
+      target:
+        entity_id: button.samsung_washer_da_wm_tp1_21_common_pause
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#33333d'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 79.2%
+      top: 13.89%
+      transform: translate(-50%,-50%)
+      z-index: 12
+  - type: custom:button-card
+    icon: mdi:stop-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: perform-action
+      perform_action: button.press
+      target:
+        entity_id: button.samsung_washer_da_wm_tp1_21_common_stop
+      confirmation:
+        text: Stop the washer? This ends the current cycle.
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#b5372b'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 84.5%
+      top: 13.89%
+      transform: translate(-50%,-50%)
+      z-index: 12
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state: active
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    name: WASHER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 8px
+      - font-weight: '900'
+      - letter-spacing: 0.8px
+      - color: '#c0392b'
+      - white-space: nowrap
+      - justify-self: start
+      - line-height: '1'
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 61.25%
+      top: 4.86%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    icon: mdi:play-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#33333d'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 73.9%
+      top: 4.86%
+      transform: translate(-50%,-50%)
+      z-index: 12
+      opacity: 0.22
+  - type: custom:button-card
+    icon: mdi:pause-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: perform-action
+      perform_action: button.press
+      target:
+        entity_id: button.samsung_washer_da_wm_tp1_21_common_pause
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#33333d'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 79.2%
+      top: 4.86%
+      transform: translate(-50%,-50%)
+      z-index: 12
+  - type: custom:button-card
+    icon: mdi:stop-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: perform-action
+      perform_action: button.press
+      target:
+        entity_id: button.samsung_washer_da_wm_tp1_21_common_stop
+      confirmation:
+        text: Stop the washer? This ends the current cycle.
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#b5372b'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 84.5%
+      top: 4.86%
+      transform: translate(-50%,-50%)
+      z-index: 12
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: pause
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    name: DRYER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 8px
+      - font-weight: '900'
+      - letter-spacing: 0.8px
+      - color: '#1f6fb2'
+      - white-space: nowrap
+      - justify-self: start
+      - line-height: '1'
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 61.25%
+      top: 4.86%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    icon: mdi:play-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: perform-action
+      perform_action: button.press
+      target:
+        entity_id: button.samsung_dryer_da_wm_tp1_21_common_start
+      confirmation:
+        text: Resume the dryer?
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#33333d'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 73.9%
+      top: 4.86%
+      transform: translate(-50%,-50%)
+      z-index: 12
+  - type: custom:button-card
+    icon: mdi:pause-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#33333d'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 79.2%
+      top: 4.86%
+      transform: translate(-50%,-50%)
+      z-index: 12
+      opacity: 0.22
+  - type: custom:button-card
+    icon: mdi:stop-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: perform-action
+      perform_action: button.press
+      target:
+        entity_id: button.samsung_dryer_da_wm_tp1_21_common_stop
+      confirmation:
+        text: Stop the dryer? This ends the current cycle.
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#b5372b'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 84.5%
+      top: 4.86%
+      transform: translate(-50%,-50%)
+      z-index: 12
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state:
+    - active
+    - pause
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state: pause
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    name: WASHER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 8px
+      - font-weight: '900'
+      - letter-spacing: 0.8px
+      - color: '#c0392b'
+      - white-space: nowrap
+      - justify-self: start
+      - line-height: '1'
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 61.25%
+      top: 13.89%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    icon: mdi:play-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: perform-action
+      perform_action: button.press
+      target:
+        entity_id: button.samsung_washer_da_wm_tp1_21_common_start
+      confirmation:
+        text: Resume the washer?
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#33333d'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 73.9%
+      top: 13.89%
+      transform: translate(-50%,-50%)
+      z-index: 12
+  - type: custom:button-card
+    icon: mdi:pause-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#33333d'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 79.2%
+      top: 13.89%
+      transform: translate(-50%,-50%)
+      z-index: 12
+      opacity: 0.22
+  - type: custom:button-card
+    icon: mdi:stop-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: perform-action
+      perform_action: button.press
+      target:
+        entity_id: button.samsung_washer_da_wm_tp1_21_common_stop
+      confirmation:
+        text: Stop the washer? This ends the current cycle.
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#b5372b'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 84.5%
+      top: 13.89%
+      transform: translate(-50%,-50%)
+      z-index: 12
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state: pause
+  elements:
+  - type: custom:button-card
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    name: WASHER
+    show_name: true
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - width: auto
+      - background: none
+      - border: none
+      - box-shadow: none
+      - padding: '0'
+      - overflow: visible
+      - border-radius: '0'
+      - min-height: '0'
+      - height: auto
+      name:
+      - font-size: 8px
+      - font-weight: '900'
+      - letter-spacing: 0.8px
+      - color: '#c0392b'
+      - white-space: nowrap
+      - justify-self: start
+      - line-height: '1'
+      grid:
+      - grid-template-areas: '"n"'
+    style:
+      left: 61.25%
+      top: 4.86%
+      transform: translate(0,-50%)
+      pointer-events: none
+      z-index: 11
+  - type: custom:button-card
+    icon: mdi:play-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: perform-action
+      perform_action: button.press
+      target:
+        entity_id: button.samsung_washer_da_wm_tp1_21_common_start
+      confirmation:
+        text: Resume the washer?
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#33333d'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 73.9%
+      top: 4.86%
+      transform: translate(-50%,-50%)
+      z-index: 12
+  - type: custom:button-card
+    icon: mdi:pause-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#33333d'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 79.2%
+      top: 4.86%
+      transform: translate(-50%,-50%)
+      z-index: 12
+      opacity: 0.22
+  - type: custom:button-card
+    icon: mdi:stop-circle-outline
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: perform-action
+      perform_action: button.press
+      target:
+        entity_id: button.samsung_washer_da_wm_tp1_21_common_stop
+      confirmation:
+        text: Stop the washer? This ends the current cycle.
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 20px
+      - height: 20px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 20px
+      - color: '#b5372b'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 84.5%
+      top: 4.86%
+      transform: translate(-50%,-50%)
+      z-index: 12
+- type: conditional
+  conditions:
+  - condition: state
+    entity: sensor.samsung_dryer_da_wm_tp1_21_common_machine_state
+    state: idle
+  - condition: state
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    state: idle
+  elements:
+  - type: custom:button-card
+    icon: mdi:tune-variant
+    show_name: false
+    show_state: false
+    show_label: false
+    show_icon: true
+    entity: sensor.samsung_washer_da_wm_tp1_21_common_machine_state
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: Laundry controls
+          dismissable: true
+          size: normal
+          content:
+            type: vertical-stack
+            cards:
+            - type: markdown
+              content: |-
+                ### Washer
+                {% set e='sensor.samsung_washer_da_wm_tp1_21_common_' %}{{ states(e~'progress')|title }} · {{ states(e~'machine_state')|title }}{% if is_state('binary_sensor.samsung_washer_da_wm_tp1_21_common_running','on') %} · {{ states(e~'completion_time') }} min left{% endif %}
+            - type: horizontal-stack
+              cards:
+              - type: button
+                name: Start
+                icon: mdi:play-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_washer_da_wm_tp1_21_common_start
+                  confirmation:
+                    text: Start the washer?
+                hold_action:
+                  action: none
+              - type: button
+                name: Pause
+                icon: mdi:pause-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_washer_da_wm_tp1_21_common_pause
+                hold_action:
+                  action: none
+              - type: button
+                name: Stop
+                icon: mdi:stop-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_washer_da_wm_tp1_21_common_stop
+                  confirmation:
+                    text: Stop the washer? This ends the current cycle.
+                hold_action:
+                  action: none
+                styles:
+                  icon:
+                  - color: '#b5372b'
+            - type: markdown
+              content: '{% set e=''sensor.samsung_washer_da_wm_tp1_21_common_'' %}**{{ states(e~''energy'')|float(0)|round(1) }}** kWh energy &nbsp;·&nbsp; **{{ states(e~''water_consumption'')|float(0)|round(0)|int }}** gal water &nbsp;·&nbsp; **{{ states(e~''drum_clean_due_in'') }}** loads until drum clean'
+            - type: entities
+              title: Settings
+              show_header_toggle: false
+              entities:
+              - entity: select.samsung_washer_da_wm_tp1_21_common_cycle
+                name: Cycle
+              - entity: select.samsung_washer_da_wm_tp1_21_common_wash_temperature
+                name: Wash temperature
+              - entity: select.samsung_washer_da_wm_tp1_21_common_spin_speed
+                name: Spin speed
+              - entity: select.hallway_samsung_washer_da_wm_tp1_21_common_soil_level
+                name: Soil level
+              - entity: select.samsung_washer_da_wm_tp1_21_common_rinse_cycles
+                name: Rinse cycles
+              - entity: number.samsung_washer_da_wm_tp1_21_common_delay_start
+                name: Delay start (hours)
+              - entity: select.hallway_samsung_washer_da_wm_tp1_21_common_laundry_out_reminder
+                name: Laundry-out reminder (min)
+              - entity: time.hallway_samsung_washer_da_wm_tp1_21_common_finish_by
+                name: Finish by
+            - type: entities
+              title: Status & maintenance
+              show_header_toggle: false
+              entities:
+              - entity: binary_sensor.samsung_washer_da_wm_tp1_21_common_detergent_low
+                name: Detergent low
+              - entity: binary_sensor.hallway_samsung_washer_da_wm_tp1_21_common_child_lock
+                name: Child lock
+              - entity: sensor.samsung_washer_da_wm_tp1_21_common_alarm_code
+                name: Alarm
+              - entity: sensor.hallway_samsung_washer_da_wm_tp1_21_common_drum_last_cleaned
+                name: Drum last cleaned
+              - entity: binary_sensor.samsung_washer_da_wm_tp1_21_common_firmware_update_available
+                name: Firmware update available
+              - entity: button.samsung_washer_da_wm_tp1_21_common_start_diagnosis
+                name: Drum clean diagnosis
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_washer_da_wm_tp1_21_common_start_diagnosis
+                  confirmation:
+                    text: Run the washer diagnosis?
+            - type: markdown
+              content: |-
+                ### Dryer
+                {% set e='sensor.samsung_dryer_da_wm_tp1_21_common_' %}{{ states(e~'progress')|title }} · {{ states(e~'machine_state')|title }}{% if is_state('binary_sensor.samsung_dryer_da_wm_tp1_21_common_running','on') %} · {{ states(e~'completion_time') }} min left{% endif %}
+            - type: horizontal-stack
+              cards:
+              - type: button
+                name: Start
+                icon: mdi:play-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_dryer_da_wm_tp1_21_common_start
+                  confirmation:
+                    text: Start the dryer?
+                hold_action:
+                  action: none
+              - type: button
+                name: Pause
+                icon: mdi:pause-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_dryer_da_wm_tp1_21_common_pause
+                hold_action:
+                  action: none
+              - type: button
+                name: Stop
+                icon: mdi:stop-circle-outline
+                show_state: false
+                icon_height: 40px
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.samsung_dryer_da_wm_tp1_21_common_stop
+                  confirmation:
+                    text: Stop the dryer? This ends the current cycle.
+                hold_action:
+                  action: none
+                styles:
+                  icon:
+                  - color: '#b5372b'
+            - type: markdown
+              content: '{% set e=''sensor.samsung_dryer_da_wm_tp1_21_common_'' %}**{{ states(e~''energy'')|float(0)|round(1) }}** kWh energy &nbsp;·&nbsp; **{{ states(''select.hallway_samsung_dryer_da_wm_tp1_21_common_dry_level'')|title }}** dry level &nbsp;·&nbsp; damp alert **{{ states(''switch.hallway_samsung_dryer_da_wm_tp1_21_common_damp_alert'')|title }}**'
+            - type: entities
+              title: Settings
+              show_header_toggle: false
+              entities:
+              - entity: select.samsung_dryer_da_wm_tp1_21_common_cycle
+                name: Cycle
+              - entity: select.hallway_samsung_dryer_da_wm_tp1_21_common_dry_level
+                name: Dry level
+              - entity: switch.samsung_dryer_da_wm_tp1_21_common_wrinkle_prevent
+                name: Wrinkle prevent
+              - entity: switch.hallway_samsung_dryer_da_wm_tp1_21_common_damp_alert
+                name: Damp alert
+              - entity: number.samsung_dryer_da_wm_tp1_21_common_delay_start
+                name: Delay start (hours)
+              - entity: time.hallway_samsung_dryer_da_wm_tp1_21_common_finish_by
+                name: Finish by
+            - type: entities
+              title: Status & maintenance
+              show_header_toggle: false
+              entities:
+              - entity: binary_sensor.hallway_samsung_dryer_da_wm_tp1_21_common_child_lock
+                name: Child lock
+              - entity: sensor.samsung_dryer_da_wm_tp1_21_common_alarm_code
+                name: Alarm
+              - entity: binary_sensor.hallway_samsung_dryer_da_wm_tp1_21_common_wrinkle_prevent_active
+                name: Wrinkle prevent active
+              - entity: binary_sensor.samsung_dryer_da_wm_tp1_21_common_firmware_update_available
+                name: Firmware update available
+    hold_action:
+      action: none
+    styles:
+      card:
+      - width: 24px
+      - height: 24px
+      - backdrop-filter: none
+      - -webkit-backdrop-filter: none
+      - --ha-card-background: transparent
+      - padding: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - overflow: visible
+      - min-height: '0'
+      icon:
+      - width: 24px
+      - color: '#33333d'
+      grid:
+      - grid-template-areas: '"i"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+    style:
+      left: 94.2%
+      top: 91.3%
+      transform: translate(-50%,-50%)
+      z-index: 12
+    title: Laundry controls

@@ -1,0 +1,16 @@
+# Helper used by the card for the title text in the top left corner.
+#
+# Option A: add this to configuration.yaml (merge it into your existing
+# "input_text:" section if you already have one), then restart Home Assistant.
+#
+# Option B: skip this file and create the helper in the UI instead:
+#   Settings > Devices & services > Helpers > Create helper > Text
+#   Name it "Laundry Label" so the entity ID becomes input_text.laundry_label,
+#   then type LAUNDRY (or any title you like) into it.
+#
+# Change the value any time to retitle the card, for example "WASH DAY".
+
+input_text:
+  laundry_label:
+    name: Laundry Label
+    initial: LAUNDRY
