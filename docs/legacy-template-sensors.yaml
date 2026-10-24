@@ -1,0 +1,54 @@
+# Minutes-left template sensors (modern Home Assistant syntax)
+#
+# Who needs this?
+#   The card prints the "completion_time" sensor followed by " min left", so that sensor must be a
+#   NUMBER OF MINUTES. Some Samsung / SmartThings integrations expose the finish time as a
+#   TIMESTAMP instead (for example 2026-10-24T18:30:00+00:00). The sensors below turn such a
+#   timestamp sensor into "minutes left".
+#
+# Why does this replace the old "Config YAML.txt"?
+#   The old file used the legacy `sensor: - platform: template` format with keys such as `name`,
+#   `state` and `state_class` mixed into it. Current Home Assistant rejects that (see issue #2).
+#   Modern template sensors live under a top level `template:` key, as below.
+#
+# How to use it:
+#   1. Replace sensor.YOUR_WASHER_FINISH_TIME and sensor.YOUR_DRYER_FINISH_TIME with the
+#      timestamp sensors of your machines (Settings > Devices & services > Entities).
+#   2. Paste this under `template:` in configuration.yaml. If you already have a `template:`
+#      section, add only the list item that starts with `- sensor:` to it.
+#   3. Check configuration (Developer tools > YAML > Check configuration), then reload
+#      template entities or restart Home Assistant.
+#   4. In the card YAML, point the "completion_time" entity at the new sensors. See the README
+#      section "My completion time is a timestamp".
+#
+# Notes:
+#   - Templates that use now() are re-evaluated every minute, so the value counts down by itself.
+#   - If the source sensor is unknown, unavailable or in the past, the result is 0.
+
+template:
+  - sensor:
+      - name: "Laundry Washer Minutes Left"
+        unique_id: laundry_washer_minutes_left
+        unit_of_measurement: "min"
+        device_class: duration
+        state_class: measurement
+        state: >
+          {% set finish = as_timestamp(states('sensor.YOUR_WASHER_FINISH_TIME'), none) %}
+          {% if finish is none %}
+            0
+          {% else %}
+            {{ [((finish - as_timestamp(now())) / 60) | round(0, 'ceil') | int, 0] | max }}
+          {% endif %}
+
+      - name: "Laundry Dryer Minutes Left"
+        unique_id: laundry_dryer_minutes_left
+        unit_of_measurement: "min"
+        device_class: duration
+        state_class: measurement
+        state: >
+          {% set finish = as_timestamp(states('sensor.YOUR_DRYER_FINISH_TIME'), none) %}
+          {% if finish is none %}
+            0
+          {% else %}
+            {{ [((finish - as_timestamp(now())) / 60) | round(0, 'ceil') | int, 0] | max }}
+          {% endif %}
